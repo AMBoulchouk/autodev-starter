@@ -1,6 +1,55 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -e
 
-echo "[autodev] inspect: not configured"
-echo "Edit .autodev/commands/inspect and replace this placeholder with the project's real command."
+echo "========================================="
+echo " [autodev] Project Inspection Diagnostic"
+echo "========================================="
+
+echo "Directory: $(pwd)"
+echo "Platform : POSIX / $(uname -s)"
+
+# 1. Git check
+if [ -d ".git" ]; then
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
+    echo "Git      : Initialized (branch: $BRANCH)"
+else
+    echo "Git      : Not initialized"
+fi
+
+# 2. Detect Tech Stack
+STACK="unknown/empty"
+DETAILS=""
+
+if [ -f "package.json" ]; then
+    STACK="Node.js / JavaScript / TypeScript"
+    DETAILS="package.json"
+elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+    STACK="Python"
+    DETAILS="pyproject.toml / requirements.txt"
+elif [ -f "go.mod" ]; then
+    STACK="Go"
+    DETAILS="go.mod"
+elif [ -f "Cargo.toml" ]; then
+    STACK="Rust"
+    DETAILS="Cargo.toml"
+fi
+
+echo "Stack    : $STACK"
+[ -n "$DETAILS" ] && echo "Details  : $DETAILS"
+
+# 3. Check AutoDev State
+if [ -f ".autodev/state/progress.json" ]; then
+    echo "State    : .autodev/state/progress.json exists"
+else
+    echo "State    : progress.json missing"
+fi
+
+# 4. Check Product Brief
+if [ -f "PRODUCT_BRIEF.md" ]; then
+    echo "Brief    : PRODUCT_BRIEF.md present"
+else
+    echo "Brief    : None (Create PRODUCT_BRIEF.md to define the product)"
+fi
+
+echo "========================================="
 exit 0

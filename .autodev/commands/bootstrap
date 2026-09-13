@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -e
+
+echo "========================================="
+echo " [autodev] Bootstrapping Environment"
+echo "========================================="
+
+# 1. Initialize Git repository if missing
+if [ ! -d ".git" ]; then
+    echo "[bootstrap] Initializing git repository..."
+    git init
+fi
+
+# 2. Check state file
+STATE_FILE=".autodev/state/progress.json"
+if [ ! -f "$STATE_FILE" ]; then
+    cat <<EOF > "$STATE_FILE"
+{
+  "version": 1,
+  "phase": "specification",
+  "project_name": "autodev-project",
+  "detected_stack": "none",
+  "features_total": 0,
+  "features_completed": [],
+  "current_feature": null,
+  "features_pending": [],
+  "last_updated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+fi
+
+echo "[bootstrap] Environment bootstrapped successfully."
+echo "[bootstrap] Next step: Define product goals in PRODUCT_BRIEF.md and plan features."
+echo "========================================="
+exit 0

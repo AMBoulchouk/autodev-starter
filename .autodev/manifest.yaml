@@ -1,8 +1,13 @@
-version: 1
+version: 2
 
 project:
   name: replace-me
   type: application
+
+state:
+  progress: ".autodev/state/progress.json"
+  decisions: ".autodev/state/decisions.md"
+  brief: "PRODUCT_BRIEF.md"
 
 autonomy:
   level: high
@@ -13,6 +18,7 @@ autonomy:
     - modify_tests
     - add_migration
     - update_documentation
+    - initialize_project_scaffold
 
   allowed_with_validation:
     - add_dependency
@@ -40,6 +46,9 @@ capabilities:
     available: false
 
 contracts:
+  bootstrap: ".autodev/commands/bootstrap"
+  plan: ".autodev/commands/plan"
+  cycle: ".autodev/commands/auto-cycle"
   inspect: ".autodev/commands/inspect"
   validate: ".autodev/commands/validate"
   test: ".autodev/commands/test"
@@ -54,3 +63,4 @@ definition_of_done:
   - build_pass
   - security_checks_pass
   - documentation_updated
+  - progress_state_updated

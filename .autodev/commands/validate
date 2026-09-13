@@ -1,6 +1,35 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -e
 
-echo "[autodev] validate: not configured"
-echo "Edit .autodev/commands/validate and replace this placeholder with the project's real command."
-exit 2
+echo "========================================="
+echo " [autodev] Validation Contract"
+echo "========================================="
+
+ERRORS=0
+
+# 1. Required governance files
+for file in ".autodev/manifest.yaml" ".autodev/architecture.md" ".autodev/state/progress.json" "AGENTS.md"; do
+    if [ ! -f "$file" ]; then
+        echo "[validate:error] Missing required file: $file"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "[validate:ok] $file is present"
+    fi
+done
+
+# 2. Check linter if package.json has lint script
+if [ -f "package.json" ]; then
+    if grep -q '"lint":' package.json; then
+        echo "[validate] Running npm run lint..."
+        npm run lint || ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+echo "========================================="
+if [ $ERRORS -gt 0 ]; then
+    echo "[validate] FAILED: $ERRORS validation issue(s) found."
+    exit 1
+fi
+
+echo "[validate] SUCCESS: All structural and code checks passed."
+exit 0

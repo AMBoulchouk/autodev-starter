@@ -1,82 +1,55 @@
-# AutoDev Starter
+# AutoDev Engine
 
-This folder makes a repository easier for autonomous coding agents to operate without prescribing a specific technology stack.
+Herramienta universal de especificación, gobernanza y desarrollo autónomo guiado por contratos para agentes de IA. Diseñada para funcionar tanto en **repositorios existentes** como en **proyectos en blanco (greenfield)**.
 
-## 1. Copy into your project
+---
 
-Copy these items to the root of an existing repository:
+## 🚀 Cómo usarlo en un Proyecto Nuevo (Desde Cero / Greenfield)
 
-- `.autodev/`
-- `AGENTS.md`
+1. **Copia `.autodev/`, `AGENTS.md` y `PRODUCT_BRIEF.md`** a una carpeta vacía.
+2. **Escribe tu idea** en `PRODUCT_BRIEF.md` (visión general, actores, MVP y preferencias técnicas opcionales).
+3. **Pídele al agente de IA:**
+   > *"Lee AGENTS.md y PRODUCT_BRIEF.md, inicializa el proyecto y construye el MVP siguiendo el ciclo de AutoDev."*
 
-## 2. Configure the manifest
+El agente seguirá automáticamente las 3 fases:
+- **Fase 0 (Bootstrap):** Inicializa el runtime (Next.js, FastAPI, Go, etc.), git y configura el entorno.
+- **Fase 1 (Especificación):** Descompone la idea en `.autodev/domain/` y crea el backlog en `.autodev/features/`.
+- **Fase 2 (Ejecución):** Implementa cada feature secuencialmente, escribe tests, valida los contratos y genera commits atómicos.
 
-Edit:
+---
 
-`.autodev/manifest.yaml`
+## 🛠️ Cómo usarlo en un Proyecto Existente (Brownfield)
 
-Set the project name, capabilities and autonomy policy.
+1. Copia `.autodev/`, `AGENTS.md` y `PRODUCT_BRIEF.md` a la raíz del repositorio.
+2. Ejecuta `.autodev/commands/inspect` (o `.ps1` en Windows) para verificar la detección automática de tu stack.
+3. Si utilizas scripts personalizados, ajusta `.autodev/commands/test` o `build` según tus necesidades.
+4. Define nuevas funcionalidades en `.autodev/features/nueva-feature.md` y solicita al agente su implementación.
 
-## 3. Connect the project-specific commands
+---
 
-Edit the files under:
+## 📋 Contratos de Comandos Disponibles
 
-`.autodev/commands/`
+Cada comando cuenta con soporte multiplataforma (Bash y PowerShell `.ps1`):
 
-Each command is an adapter. The agent should call the adapter, not the underlying framework command directly.
+| Contrato | Propósito |
+| :--- | :--- |
+| `bootstrap` | Inicializa el repositorio git y el motor de estado `progress.json`. |
+| `plan` | Sincroniza `PRODUCT_BRIEF.md` con las especificaciones de `.autodev/features/`. |
+| `inspect` | Diagnostica el stack técnico, runtime y estado sin bloquear el agente. |
+| `validate` | Valida integridad estructural de gobernanza y ejecuta linters si existen. |
+| `test` | Ejecuta la suite de pruebas (soporte nativo para npm, pytest, go test, cargo test). |
+| `build` | Compila o verifica empaquetado si el stack lo requiere. |
+| `run` | Inicia la aplicación localmente mediante los entrypoints detectados. |
+| `auto-cycle` | Valida la feature actual, ejecuta pruebas, commitea y avanza el estado. |
 
-For example, if your project uses a command like:
+---
 
-    npm test
+## 📊 Motor de Estado (`.autodev/state/progress.json`)
 
-or:
+El motor de estado mantiene la trazabilidad del desarrollo:
+- `phase`: `"bootstrap"` | `"specification"` | `"development"` | `"complete"`
+- `features_completed`: Lista de features verificadas con tests.
+- `current_feature`: Feature bajo desarrollo activo.
+- `features_pending`: Cola de trabajo pendiente.
 
-    dotnet test
-
-or:
-
-    pytest
-
-put that command inside `.autodev/commands/test`.
-
-The same pattern applies to:
-
-- inspect
-- validate
-- test
-- build
-- run
-- deploy-preview
-
-## 4. Write business specifications
-
-Create features under:
-
-`.autodev/features/`
-
-Focus on:
-
-- objective
-- actors
-- preconditions
-- business rules
-- outcomes
-- acceptance criteria
-
-Avoid implementation details unless they are themselves a requirement.
-
-## 5. Give the coding agent a task
-
-Example:
-
-    Implement `.autodev/features/example-feature.md`.
-
-A compliant agent should inspect the repository, implement the change, run the project contracts and update decision records when needed.
-
-## Suggested first local test
-
-1. Copy this starter into a small existing repository.
-2. Replace the placeholder command adapters with the real commands used by the project.
-3. Set the capabilities in `.autodev/manifest.yaml`.
-4. Ask the coding agent to implement a tiny feature from `.autodev/features/`.
-5. Verify that the agent uses the `.autodev/commands/*` contracts instead of hard-coding assumptions about the technology.
+Esto garantiza que el desarrollo sea **reanudable, medible y tolerante a interrupciones**.

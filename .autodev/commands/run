@@ -1,6 +1,39 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -e
 
-echo "[autodev] run: not configured"
-echo "Edit .autodev/commands/run and replace this placeholder with the project's real command."
-exit 2
+echo "========================================="
+echo " [autodev] Application Run Adapter"
+echo "========================================="
+
+if [ -f "package.json" ]; then
+    if grep -q '"dev":' package.json; then
+        echo "[run] Launching: npm run dev"
+        npm run dev
+        exit $?
+    elif grep -q '"start":' package.json; then
+        echo "[run] Launching: npm start"
+        npm start
+        exit $?
+    fi
+fi
+
+if [ -f "main.py" ]; then
+    echo "[run] Launching: python3 main.py"
+    python3 main.py
+    exit $?
+fi
+
+if [ -f "Cargo.toml" ]; then
+    echo "[run] Launching: cargo run"
+    cargo run
+    exit $?
+fi
+
+if [ -f "go.mod" ]; then
+    echo "[run] Launching: go run ."
+    go run .
+    exit $?
+fi
+
+echo "[run:notice] No standard entrypoint detected yet."
+exit 0

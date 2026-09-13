@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -e
+
+echo "========================================="
+echo " [autodev] Product Specification & Plan"
+echo "========================================="
+
+if [ ! -f "PRODUCT_BRIEF.md" ]; then
+    echo "[plan:warn] PRODUCT_BRIEF.md not found. Creating placeholder..."
+    echo -e "# Product Brief\n\n## Objective\n\n## Features\n" > PRODUCT_BRIEF.md
+fi
+
+echo "[plan] Features in .autodev/features/:"
+ls -1 .autodev/features/*.md 2>/dev/null || echo "No features found yet."
+
+echo ""
+echo "[plan:agent-guide]"
+echo "1. Read PRODUCT_BRIEF.md."
+echo "2. Update .autodev/domain/entities.md and rules.md."
+echo "3. Create atomic feature files under .autodev/features/ (e.g. 01-scaffold.md)."
+echo "4. Update .autodev/state/progress.json features_pending and set phase to 'development'."
+echo "========================================="
+exit 0

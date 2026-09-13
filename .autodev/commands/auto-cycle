@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -e
+
+echo "========================================="
+echo " [autodev] Autonomous Feature Cycle"
+echo "========================================="
+
+STATE_FILE=".autodev/state/progress.json"
+if [ ! -f "$STATE_FILE" ]; then
+    echo "[cycle:error] $STATE_FILE missing. Run bootstrap first."
+    exit 1
+fi
+
+echo "[cycle] Running contracts for current feature..."
+./.autodev/commands/validate
+./.autodev/commands/test
+./.autodev/commands/build
+
+echo "[cycle:pass] All contracts verified."
+echo "========================================="
+exit 0
