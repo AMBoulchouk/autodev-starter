@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[autodev] inspect: not configured"
+echo "Edit .autodev/commands/inspect and replace this placeholder with the project's real command."
+exit 0

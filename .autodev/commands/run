@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[autodev] run: not configured"
+echo "Edit .autodev/commands/run and replace this placeholder with the project's real command."
+exit 2

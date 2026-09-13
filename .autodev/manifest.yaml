@@ -1,0 +1,56 @@
+version: 1
+
+project:
+  name: replace-me
+  type: application
+
+autonomy:
+  level: high
+
+  allowed:
+    - create_files
+    - modify_code
+    - modify_tests
+    - add_migration
+    - update_documentation
+
+  allowed_with_validation:
+    - add_dependency
+    - change_public_api
+    - modify_database_schema
+
+  requires_human:
+    - destructive_database_change
+    - production_deployment
+    - rotate_credentials
+    - change_authorization_policy
+
+capabilities:
+  database:
+    available: false
+  authentication:
+    available: false
+  file_storage:
+    available: false
+  async_jobs:
+    available: false
+  external_http:
+    available: true
+  browser_ui:
+    available: false
+
+contracts:
+  inspect: ".autodev/commands/inspect"
+  validate: ".autodev/commands/validate"
+  test: ".autodev/commands/test"
+  build: ".autodev/commands/build"
+  run: ".autodev/commands/run"
+  preview: ".autodev/commands/deploy-preview"
+
+definition_of_done:
+  - specifications_updated
+  - implementation_complete
+  - tests_pass
+  - build_pass
+  - security_checks_pass
+  - documentation_updated

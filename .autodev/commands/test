@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[autodev] test: not configured"
+echo "Edit .autodev/commands/test and replace this placeholder with the project's real command."
+exit 2
