@@ -4,10 +4,27 @@ project:
   name: replace-me
   type: application
 
+driver:
+  runtime: ".autodev/runtime.yaml"
+
 state:
   progress: ".autodev/state/progress.json"
   decisions: ".autodev/state/decisions.md"
+  evidence_dir: ".autodev/evidence"
   brief: "PRODUCT_BRIEF.md"
+
+git:
+  automatic_commit: true
+  forbidden:
+    - ".env*"
+    - "*.pem"
+    - "*.key"
+    - "*.pfx"
+    - "secrets.*"
+  protected:
+    - ".autodev/policies/**"
+    - ".autodev/manifest.yaml"
+  max_changed_files: 50
 
 autonomy:
   level: high
@@ -16,9 +33,9 @@ autonomy:
     - create_files
     - modify_code
     - modify_tests
-    - add_migration
     - update_documentation
-    - initialize_project_scaffold
+    - initialize_scaffold
+    - configure_runtime_driver
 
   allowed_with_validation:
     - add_dependency
@@ -30,6 +47,7 @@ autonomy:
     - production_deployment
     - rotate_credentials
     - change_authorization_policy
+    - modify_protected_governance_files
 
 capabilities:
   database:
@@ -53,14 +71,18 @@ contracts:
   validate: ".autodev/commands/validate"
   test: ".autodev/commands/test"
   build: ".autodev/commands/build"
+  verify: ".autodev/commands/verify"
   run: ".autodev/commands/run"
   preview: ".autodev/commands/deploy-preview"
 
 definition_of_done:
-  - specifications_updated
+  - specification_acceptance_criteria_defined
   - implementation_complete
+  - validation_pass
   - tests_pass
   - build_pass
-  - security_checks_pass
+  - verify_pass
+  - evidence_recorded
+  - git_safety_pass
+  - atomic_commit_created
   - documentation_updated
-  - progress_state_updated

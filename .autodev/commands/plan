@@ -2,22 +2,137 @@
 set -e
 
 echo "========================================="
-echo " [autodev] Product Specification & Plan"
+echo " [autodev] Deterministic Spec Coordinator"
 echo "========================================="
 
-if [ ! -f "PRODUCT_BRIEF.md" ]; then
-    echo "[plan:warn] PRODUCT_BRIEF.md not found. Creating placeholder..."
-    echo -e "# Product Brief\n\n## Objective\n\n## Features\n" > PRODUCT_BRIEF.md
+STATE_FILE=".autodev/state/progress.json"
+if [ ! -f "$STATE_FILE" ]; then
+    echo "[plan:error] progress.json missing. Run bootstrap first." >&2
+    exit 1
 fi
 
-echo "[plan] Features in .autodev/features/:"
-ls -1 .autodev/features/*.md 2>/dev/null || echo "No features found yet."
+# Use python3 if available for 100% parity with PowerShell state machine logic
+if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+    PY_BIN=$(command -v python3 2>/dev/null || command -v python)
+    "$PY_BIN" - << 'EOF'
+import os, glob, json, re
+from datetime import datetime, timezone
 
-echo ""
-echo "[plan:agent-guide]"
-echo "1. Read PRODUCT_BRIEF.md."
-echo "2. Update .autodev/domain/entities.md and rules.md."
-echo "3. Create atomic feature files under .autodev/features/ (e.g. 01-scaffold.md)."
-echo "4. Update .autodev/state/progress.json features_pending and set phase to 'development'."
-echo "========================================="
+state_file = ".autodev/state/progress.json"
+with open(state_file, "r", encoding="utf-8") as f:
+    progress = json.load(f)
+
+feature_files = [f for f in glob.glob(".autodev/features/*.md") if not f.endswith("example-feature.md")]
+if not feature_files:
+    print("[plan:notice] No custom specifications found in .autodev/features/.")
+    print("[plan:notice] The Agent must decompose PRODUCT_BRIEF.md into feature files.")
+    print("=========================================")
+    exit(0)
+
+print(f"[plan] Discovered {len(feature_files)} feature file(s).")
+
+if "features" not in progress:
+    progress["features"] = {}
+
+auto_idx = 1
+for fpath in sorted(feature_files):
+    fname = os.path.basename(fpath)
+    base, _ = os.path.splitext(fname)
+    with open(fpath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # ID
+    m_id = re.search(r"^(F\d+)", base)
+    if not m_id:
+        m_id = re.search(r"^id:\s*[\"']?(F\d+)[\"']?", content, re.MULTILINE)
+    feat_id = m_id.group(1) if m_id else f"F{auto_idx:03d}"
+    auto_idx += 1
+
+    # Title
+    m_title = re.search(r"^#\s*Feature(?:\s+[A-Za-z0-9_-]+)?:\s*(.+)$", content, re.MULTILINE)
+    if m_title:
+        feat_title = m_title.group(1).strip()
+    elif base.startswith("F"):
+        feat_title = base.split("-", 1)[-1].replace("-", " ")
+    else:
+        feat_title = base
+
+    # Deps
+    deps = []
+    m_deps = re.search(r"^depends_on:\s*\[(.*?)\]", content, re.MULTILINE)
+    if m_deps:
+        for d in m_deps.group(1).split(","):
+            c = d.strip().strip('"').strip("'")
+            if c: deps.append(c)
+
+    if feat_id not in progress["features"]:
+        progress["features"][feat_id] = {
+            "name": feat_title,
+            "spec": f".autodev/features/{fname}",
+            "status": "pending",
+            "attempts": 0,
+            "depends_on": deps
+        }
+    else:
+        progress["features"][feat_id]["name"] = feat_title
+        progress["features"][feat_id]["spec"] = f".autodev/features/{fname}"
+        progress["features"][feat_id]["depends_on"] = deps
+
+# Resolve dependencies
+for fid, feat in progress["features"].items():
+    if feat["status"] in ["completed", "skipped", "implementing", "validating", "approval_required"]:
+        continue
+    all_ok = True
+    invalid_dep = False
+    for dep in feat.get("depends_on", []):
+        if dep not in progress["features"]:
+            print(f"[plan:warn] Feature {fid} depends on non-existent feature: {dep}")
+            invalid_dep = True
+            all_ok = False
+            break
+        if progress["features"][dep]["status"] not in ["completed", "skipped"]:
+            all_ok = False
+    if invalid_dep:
+        feat["status"] = "blocked"
+    elif all_ok:
+        feat["status"] = "ready"
+    else:
+        feat["status"] = "pending"
+
+all_completed = all(f["status"] in ["completed", "skipped"] for f in progress["features"].values()) and len(progress["features"]) > 0
+has_ready = any(f["status"] == "ready" for f in progress["features"].values())
+
+if all_completed:
+    progress["phase"] = "complete"
+    print("\n[plan:complete] All features are completed!")
+elif progress.get("phase") == "specification" and has_ready:
+    progress["phase"] = "development"
+    print("\n[plan] Transitioned phase to: development")
+
+progress["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+with open(state_file, "w", encoding="utf-8") as f:
+    json.dump(progress, f, indent=2)
+
+print("\n--- Feature Work Graph ---")
+next_unit = None
+for fid, feat in progress["features"].items():
+    deps_str = f" [depends: {', '.join(feat.get('depends_on', []))}]" if feat.get("depends_on") else ""
+    print(f"{fid:<6} | {feat['status']:<14} | {feat['name']:<30} | Attempts: {feat.get('attempts', 0)}{deps_str}")
+    if not next_unit and feat["status"] == "ready":
+        next_unit = fid
+
+print("--------------------------")
+if next_unit:
+    print(f"[plan:next] Next ready unit of work: {next_unit} ({progress['features'][next_unit]['name']})")
+elif not all_completed:
+    print("[plan:notice] No feature is currently in 'ready' state. Check blocked/pending dependencies.")
+
+print("=========================================")
+EOF
+else
+    echo "[plan] Python not found. Scanning feature files in .autodev/features/:"
+    ls -1 .autodev/features/*.md
+    echo "========================================="
+fi
 exit 0

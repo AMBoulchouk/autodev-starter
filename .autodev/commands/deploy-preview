@@ -1,6 +1,6 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/driver_helper.sh"
 
-echo "[autodev] deploy-preview: not configured"
-echo "Edit .autodev/commands/deploy-preview and replace this placeholder with the project's real command."
-exit 2
+invoke_runtime_contract "preview"

@@ -1,12 +1,13 @@
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot/driver_helper.ps1"
 
 Write-Host "========================================="
-Write-Host " [autodev] Validation Contract"
+Write-Host " [autodev] Governance & Code Validation"
 Write-Host "========================================="
 
 $errors = 0
 
-# 1. Validate Core Governance Files
+# 1. Structural Governance Checks
 $requiredFiles = @(
     ".autodev/manifest.yaml",
     ".autodev/architecture.md",
@@ -23,46 +24,28 @@ foreach ($file in $requiredFiles) {
     }
 }
 
-# 2. Validate progress.json schema
+# 2. State Machine Schema Validation
 if (Test-Path ".autodev/state/progress.json") {
     try {
         $progress = Get-Content ".autodev/state/progress.json" -Raw | ConvertFrom-Json
-        if (-not $progress.phase) {
-            Write-Host "[validate:error] progress.json missing 'phase' field" -ForegroundColor Red
+        if (-not $progress.phase -or -not $progress.features) {
+            Write-Host "[validate:error] progress.json missing 'phase' or 'features' field" -ForegroundColor Red
             $errors++
         } else {
-            Write-Host "[validate:ok] progress.json is valid (current phase: $($progress.phase))"
+            Write-Host "[validate:ok] progress.json schema valid (phase: $($progress.phase))"
         }
     } catch {
-        Write-Host "[validate:error] progress.json is not valid JSON: $_" -ForegroundColor Red
+        Write-Host "[validate:error] progress.json failed JSON parse: $_" -ForegroundColor Red
         $errors++
     }
 }
 
-# 3. If a linter is configured in package.json, run it
-if (Test-Path "package.json") {
-    try {
-        $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
-        if ($pkg.scripts -and $pkg.scripts.lint) {
-            Write-Host "[validate] Running npm run lint..."
-            npm run lint
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "[validate:error] Code linter failed" -ForegroundColor Red
-                $errors++
-            } else {
-                Write-Host "[validate:ok] Code linter passed"
-            }
-        }
-    } catch {
-        Write-Host "[validate:warn] Could not parse package.json"
-    }
-}
-
-Write-Host "========================================="
 if ($errors -gt 0) {
-    Write-Host "[validate] FAILED: $errors validation issue(s) found." -ForegroundColor Red
+    Write-Host "[validate] FAILED: $errors governance issue(s) detected." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[validate] SUCCESS: All structural and code checks passed." -ForegroundColor Green
-exit 0
+Write-Host "[validate:ok] Governance checks passed."
+
+# 3. Delegate to Project Driver (runtime.yaml commands.validate)
+Invoke-RuntimeContract -ContractName "validate"

@@ -2,34 +2,80 @@
 set -e
 
 echo "========================================="
-echo " [autodev] Bootstrapping Environment"
+echo " [autodev] Engine Bootstrap"
 echo "========================================="
 
-# 1. Initialize Git repository if missing
+# 1. Initialize Git if missing
 if [ ! -d ".git" ]; then
-    echo "[bootstrap] Initializing git repository..."
+    echo "[bootstrap] Initializing Git repository..."
     git init
+else
+    echo "[bootstrap] Git repository already present."
 fi
 
-# 2. Check state file
+# 2. Ensure directories exist
+mkdir -p .autodev/state .autodev/evidence .autodev/features .autodev/domain .autodev/policies
+
+# 3. Initialize progress.json
 STATE_FILE=".autodev/state/progress.json"
-if [ ! -f "$STATE_FILE" ]; then
+NEEDS_INIT=1
+if [ -f "$STATE_FILE" ]; then
+    if grep -q '"version"[[:space:]]*:[[:space:]]*2' "$STATE_FILE"; then
+        NEEDS_INIT=0
+    fi
+fi
+
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+
+if [ "$NEEDS_INIT" -eq 1 ]; then
     cat <<EOF > "$STATE_FILE"
 {
-  "version": 1,
+  "version": 2,
   "phase": "specification",
-  "project_name": "autodev-project",
-  "detected_stack": "none",
-  "features_total": 0,
-  "features_completed": [],
   "current_feature": null,
-  "features_pending": [],
-  "last_updated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  "features": {},
+  "last_cycle": {
+    "validate": null,
+    "test": null,
+    "build": null,
+    "verify": null
+  },
+  "last_updated": "$TIMESTAMP"
 }
 EOF
+    echo "[bootstrap] Initialized progress.json (phase: specification)."
 fi
 
-echo "[bootstrap] Environment bootstrapped successfully."
-echo "[bootstrap] Next step: Define product goals in PRODUCT_BRIEF.md and plan features."
+# 4. Ensure runtime.yaml template exists
+if [ ! -f ".autodev/runtime.yaml" ]; then
+    cat <<EOF > ".autodev/runtime.yaml"
+version: 1
+
+environment:
+  setup: ""
+  install: ""
+
+commands:
+  validate: ""
+  test: ""
+  build: ""
+  run: ""
+  verify: ""
+  preview: ""
+
+health:
+  command: ""
+  expected_exit_code: 0
+EOF
+    echo "[bootstrap] Created driver template: .autodev/runtime.yaml"
+fi
+
+echo ""
+echo "[bootstrap:agent-responsibilities]"
+echo "AutoDev Engine bootstrap complete. The Agent must now:"
+echo "1. Read PRODUCT_BRIEF.md (or inspect existing code)."
+echo "2. Model domain (.autodev/domain/) and record ADRs (.autodev/state/decisions.md)."
+echo "3. Configure project commands in .autodev/runtime.yaml."
+echo "4. Decompose features under .autodev/features/ and run .autodev/commands/plan."
 echo "========================================="
 exit 0

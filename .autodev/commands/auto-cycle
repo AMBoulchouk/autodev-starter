@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/driver_helper.sh"
 
 echo "========================================="
 echo " [autodev] Autonomous Feature Cycle"
@@ -7,15 +9,207 @@ echo "========================================="
 
 STATE_FILE=".autodev/state/progress.json"
 if [ ! -f "$STATE_FILE" ]; then
-    echo "[cycle:error] $STATE_FILE missing. Run bootstrap first."
+    echo "[cycle:error] progress.json missing. Run bootstrap first." >&2
     exit 1
 fi
 
-echo "[cycle] Running contracts for current feature..."
-./.autodev/commands/validate
-./.autodev/commands/test
-./.autodev/commands/build
+PHASE=$(get_progress_phase)
+echo "Current Phase: $PHASE"
 
-echo "[cycle:pass] All contracts verified."
-echo "========================================="
-exit 0
+if [ "$PHASE" = "bootstrap" ]; then
+    echo "[cycle] In bootstrap phase. Running bootstrap contract..."
+    "$DIR/bootstrap"
+    exit $?
+fi
+
+if [ "$PHASE" = "specification" ]; then
+    echo "[cycle] In specification phase. Running plan contract..."
+    "$DIR/plan"
+    exit $?
+fi
+
+if [ "$PHASE" = "complete" ]; then
+    echo "[cycle:done] All features completed! Milestone reached."
+    exit 0
+fi
+
+# Run cycle orchestration with Python
+if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+    PY_BIN=$(command -v python3 2>/dev/null || command -v python)
+    "$PY_BIN" - << 'EOF'
+import sys, os, json, subprocess, glob, fnmatch
+from datetime import datetime, timezone
+
+state_file = ".autodev/state/progress.json"
+with open(state_file, "r", encoding="utf-8") as f:
+    progress = json.load(f)
+
+def save():
+    progress["last_updated"] = datetime.now(timezone.utc).isoformat()
+    with open(state_file, "w", encoding="utf-8") as f:
+        json.dump(progress, f, indent=2)
+
+# Select active feature
+if not progress.get("current_feature"):
+    target_id = None
+    for fid, f in progress.get("features", {}).items():
+        if f.get("status") in ["ready", "failed", "implementing"]:
+            target_id = fid
+            break
+    if not target_id:
+        print("[cycle:notice] No feature is ready for development. Pausing.")
+        sys.exit(0)
+    progress["current_feature"] = target_id
+    if progress["features"][target_id]["status"] == "ready":
+        progress["features"][target_id]["status"] = "implementing"
+    save()
+    print(f"[cycle] Assigned active feature: {target_id} ({progress['features'][target_id]['name']})")
+
+active_id = progress["current_feature"]
+active_feat = progress["features"][active_id]
+
+print(f"[cycle] Active Feature: {active_id} ({active_feat['name']})")
+print(f"[cycle] Current Status: {active_feat['status']}")
+
+# Transition to validating
+active_feat["status"] = "validating"
+save()
+
+# Execute contracts: validate, test, build, verify
+contracts = ["validate", "test", "build", "verify"]
+cycle_results = {}
+failed_contract = None
+
+for c in contracts:
+    print(f"\n>>> Contract: {c} <<<")
+    cmd_script = f"./.autodev/commands/{c}"
+    args = [cmd_script]
+    if c == "verify":
+        args.append(active_id)
+    res = subprocess.run(args)
+    if res.returncode != 0:
+        cycle_results[c] = "failed"
+        failed_contract = c
+        print(f"[cycle:fail] Contract '{c}' FAILED with exit code {res.returncode}.")
+        break
+    else:
+        cycle_results[c] = "passed"
+        print(f"[cycle:ok] Contract '{c}' PASSED.")
+
+progress["last_cycle"] = cycle_results
+
+if failed_contract:
+    active_feat["attempts"] = active_feat.get("attempts", 0) + 1
+    active_feat["status"] = "failed"
+    save()
+    active_feat["status"] = "implementing"
+    save()
+    print(f"\n[cycle:error] Feature {active_id} failed on contract '{failed_contract}' (Attempt #{active_feat['attempts']}).")
+    print("[cycle:action] The Agent must inspect errors, fix implementation, and rerun cycle.")
+    sys.exit(1)
+
+# Git Safety Checks
+print("\n>>> Checking Git Safety Policies <<<")
+forbidden_patterns = [".env*", "*.pem", "*.key", "*.pfx", "secrets.*"]
+protected_patterns = [".autodev/policies/*", ".autodev/manifest.yaml"]
+max_changed_files = 50
+
+res = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+changed_files = []
+if res.returncode == 0 and res.stdout:
+    for line in res.stdout.splitlines():
+        if len(line) > 3:
+            fpath = line[3:].strip()
+            if "->" in fpath:
+                fpath = fpath.split("->")[-1].strip()
+            if fpath: changed_files.append(fpath)
+
+for fpath in changed_files:
+    fname = os.path.basename(fpath)
+    for pat in forbidden_patterns:
+        if fnmatch.fnmatch(fname, pat) or fnmatch.fnmatch(fpath, pat):
+            print(f"[cycle:security] FORBIDDEN FILE DETECTED: {fpath}")
+            active_feat["status"] = "blocked"
+            save()
+            sys.exit(1)
+
+for fpath in changed_files:
+    fpath_norm = fpath.replace("\\", "/")
+    if fpath_norm == ".autodev/manifest.yaml" or fpath_norm.startswith(".autodev/policies/"):
+        print(f"[cycle:security] PROTECTED PATH MODIFIED: {fpath_norm}")
+        active_feat["status"] = "approval_required"
+        save()
+        sys.exit(1)
+
+if len(changed_files) > max_changed_files:
+    print(f"[cycle:security] Exceeded max changed files ({len(changed_files)} > {max_changed_files})")
+    active_feat["status"] = "approval_required"
+    save()
+    sys.exit(1)
+
+# Generate Evidence
+print("\n>>> Generating Auditable Evidence <<<")
+os.makedirs(".autodev/evidence", exist_ok=True)
+evidence_file = f".autodev/evidence/{active_id}.json"
+timestamp = datetime.now(timezone.utc).isoformat()
+
+evidence_data = {
+    "feature": active_id,
+    "spec": active_feat.get("spec", ""),
+    "timestamp": timestamp,
+    "verification": cycle_results,
+    "commit": None,
+    "changed_files": changed_files,
+    "attempts": active_feat.get("attempts", 0) + 1,
+    "dependencies": active_feat.get("depends_on", []),
+    "acceptance_criteria_verified": True
+}
+
+with open(evidence_file, "w", encoding="utf-8") as ef:
+    json.dump(evidence_data, ef, indent=2)
+
+# Atomic Git Commit
+if os.path.isdir(".git"):
+    subprocess.run(["git", "add", "-A"])
+    msg = f"feat({active_id}): verified acceptance criteria"
+    subprocess.run(["git", "commit", "-m", msg], capture_output=True)
+    res_sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
+    if res_sha.returncode == 0:
+        commit_sha = res_sha.stdout.strip()
+        evidence_data["commit"] = commit_sha
+        with open(evidence_file, "w", encoding="utf-8") as ef:
+            json.dump(evidence_data, ef, indent=2)
+        subprocess.run(["git", "add", evidence_file])
+        subprocess.run(["git", "commit", "--amend", "-C", "HEAD"], capture_output=True)
+        print(f"[cycle:git] Atomic commit created: {commit_sha}")
+
+# Complete Feature & Unlock
+active_feat["status"] = "completed"
+active_feat["attempts"] = active_feat.get("attempts", 0) + 1
+progress["current_feature"] = None
+print(f"[cycle:pass] Feature {active_id} completed successfully!")
+
+for fid, f in progress.get("features", {}).items():
+    if f.get("status") == "pending":
+        all_done = True
+        for dep in f.get("depends_on", []):
+            if progress["features"].get(dep, {}).get("status") not in ["completed", "skipped"]:
+                all_done = False
+                break
+        if all_done:
+            f["status"] = "ready"
+            print(f"[cycle:unlock] Feature {fid} unlocked -> status: ready")
+
+all_done = all(f.get("status") in ["completed", "skipped"] for f in progress.get("features", {}).values())
+if all_done and len(progress.get("features", {})) > 0:
+    progress["phase"] = "complete"
+    print("\n[cycle:milestone] ALL FEATURES ARE COMPLETED! Product is ready.")
+
+save()
+print("=========================================")
+EOF
+    exit $?
+else
+    echo "[cycle:error] python3 is required for POSIX auto-cycle execution." >&2
+    exit 1
+fi

@@ -1,11 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "phase": "bootstrap",
-  "project_name": "replace-me",
-  "detected_stack": "none",
-  "features_total": 0,
-  "features_completed": [],
   "current_feature": null,
-  "features_pending": [],
-  "last_updated": "2026-09-13T20:48:00Z"
+  "features": {},
+  "last_cycle": {
+    "validate": null,
+    "test": null,
+    "build": null,
+    "verify": null
+  },
+  "last_updated": "2026-09-13T20:55:00Z"
 }

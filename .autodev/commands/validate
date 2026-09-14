@@ -1,35 +1,36 @@
 #!/usr/bin/env bash
 set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/driver_helper.sh"
 
 echo "========================================="
-echo " [autodev] Validation Contract"
+echo " [autodev] Governance & Code Validation"
 echo "========================================="
 
 ERRORS=0
 
-# 1. Required governance files
+# 1. Structural checks
 for file in ".autodev/manifest.yaml" ".autodev/architecture.md" ".autodev/state/progress.json" "AGENTS.md"; do
     if [ ! -f "$file" ]; then
-        echo "[validate:error] Missing required file: $file"
+        echo "[validate:error] Missing required file: $file" >&2
         ERRORS=$((ERRORS + 1))
     else
         echo "[validate:ok] $file is present"
     fi
 done
 
-# 2. Check linter if package.json has lint script
-if [ -f "package.json" ]; then
-    if grep -q '"lint":' package.json; then
-        echo "[validate] Running npm run lint..."
-        npm run lint || ERRORS=$((ERRORS + 1))
-    fi
-fi
-
-echo "========================================="
 if [ $ERRORS -gt 0 ]; then
-    echo "[validate] FAILED: $ERRORS validation issue(s) found."
+    echo "[validate] FAILED: $ERRORS governance issue(s) detected." >&2
     exit 1
 fi
 
-echo "[validate] SUCCESS: All structural and code checks passed."
+# 2. Delegate to Project Driver (runtime.yaml commands.validate)
+invoke_runtime_contract "validate" "" 1
+DRIVER_EXIT=$?
+if [ $DRIVER_EXIT -ne 0 ]; then
+    echo "[validate] FAILED: Project driver validation failed." >&2
+    exit $DRIVER_EXIT
+fi
+
+echo "[validate] SUCCESS: All governance and driver validations passed."
 exit 0

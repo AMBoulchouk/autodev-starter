@@ -1,37 +1,6 @@
 #!/usr/bin/env bash
 set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/driver_helper.sh"
 
-echo "========================================="
-echo " [autodev] Build Contract Runner"
-echo "========================================="
-
-if [ -f ".autodev/state/progress.json" ]; then
-    PHASE=$(grep -o '"phase": *"[^"]*"' .autodev/state/progress.json | cut -d'"' -f4 || echo "")
-    if [ "$PHASE" = "bootstrap" ] || [ "$PHASE" = "specification" ]; then
-        echo "[build:info] Project is in '$PHASE' phase. Skipping build."
-        exit 0
-    fi
-fi
-
-if [ -f "package.json" ]; then
-    if grep -q '"build":' package.json; then
-        echo "[build] Executing: npm run build"
-        npm run build
-        exit $?
-    fi
-fi
-
-if [ -f "Cargo.toml" ]; then
-    echo "[build] Executing: cargo build"
-    cargo build
-    exit $?
-fi
-
-if [ -f "go.mod" ]; then
-    echo "[build] Executing: go build ./..."
-    go build ./...
-    exit $?
-fi
-
-echo "[build:info] No compilation step required. Build passed."
-exit 0
+invoke_runtime_contract "build"

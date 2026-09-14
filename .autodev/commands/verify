@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/driver_helper.sh"
+
+FEATURE_ID="${1:-}"
+if [ -z "$FEATURE_ID" ]; then
+    STATE_FILE=".autodev/state/progress.json"
+    if [ -f "$STATE_FILE" ]; then
+        FEATURE_ID=$(grep -o '"current_feature"[[:space:]]*:[[:space:]]*"[^"]*"' "$STATE_FILE" | sed -E 's/.*"current_feature"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/' || echo "")
+    fi
+fi
+
+invoke_runtime_contract "verify" "$FEATURE_ID"
