@@ -1,12 +1,16 @@
 # Business Rules
 
-Keep business rules technology-neutral.
+Documenta aquí las reglas de negocio del proyecto de forma neutral a la tecnología.
+Estas reglas especifican la lógica de validación, cálculos, permisos y flujos de decisión del dominio.
 
-## Example
+---
 
-### Order approval
+<!-- Estructura recomendada:
 
-- Orders below 10,000 can be approved by an operator.
-- Orders from 10,000 to 99,999.99 require manager approval.
-- Orders of 100,000 or more require director approval.
-- Rejected orders cannot be approved.
+### [Nombre de la Regla o Caso de Uso]
+
+- [Condición 1 y su resultado o restricción]
+- [Condición 2 y su resultado o restricción]
+- [Transiciones de estado permitidas o prohibidas]
+
+-->

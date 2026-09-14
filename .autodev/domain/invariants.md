@@ -1,9 +1,10 @@
 # Domain Invariants
 
-Invariants must always hold, regardless of UI, API or storage technology.
+Los invariantes son condiciones de consistencia que **siempre deben cumplirse**, independientemente de la interfaz de usuario, API o tecnología de almacenamiento utilizada.
 
-## Example
+---
 
-- An approved order has an approval timestamp.
-- A rejected order cannot transition to approved.
-- Monetary totals cannot be negative.
+<!-- Enumera aquí los invariantes esenciales de tu dominio:
+- [Condición que nunca puede violarse bajo ninguna circunstancia]
+- [Regla de integridad que el sistema debe garantizar siempre]
+-->

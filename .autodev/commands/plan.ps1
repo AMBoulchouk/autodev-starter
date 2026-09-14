@@ -13,7 +13,7 @@ if (-not (Test-Path $progressFile)) {
 $progress = Get-Content $progressFile -Raw | ConvertFrom-Json
 
 # 1. Scan feature files in .autodev/features/
-$featureFiles = Get-ChildItem -Path ".autodev/features" -Filter "*.md" -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne "example-feature.md" }
+$featureFiles = Get-ChildItem -Path ".autodev/features" -Filter "*.md" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch "template" -and $_.Name -ne "example-feature.md" }
 
 if ($featureFiles.Count -eq 0) {
     Write-Host "[plan:notice] No custom specifications found in .autodev/features/."

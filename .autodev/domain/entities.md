@@ -1,18 +1,20 @@
 # Domain Entities
 
-Document the core business concepts here.
+Documenta aquí los conceptos y entidades centrales del negocio de tu proyecto.
+Las entidades deben ser independientes de la tecnología de persistencia (no documentes tablas de bases de datos a menos que la estructura de la base de datos sea un requerimiento de negocio explícito).
 
-## Example
+---
 
-### Order
+<!-- Estructura recomendada para cada entidad:
 
-Purpose:
-Represents a customer purchase.
+### [Nombre de la Entidad]
 
-Important attributes:
-- id
-- customer
-- status
-- total
+Propósito:
+[Descripción del rol de este concepto en el dominio]
 
-Do not document database tables here unless database structure is itself a business requirement.
+Atributos principales:
+- id: [Identificador único]
+- [atributo_1]: [Descripción]
+- [atributo_2]: [Descripción]
+
+-->

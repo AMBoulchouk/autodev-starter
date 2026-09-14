@@ -22,7 +22,7 @@ state_file = ".autodev/state/progress.json"
 with open(state_file, "r", encoding="utf-8") as f:
     progress = json.load(f)
 
-feature_files = [f for f in glob.glob(".autodev/features/*.md") if not f.endswith("example-feature.md")]
+feature_files = [f for f in glob.glob(".autodev/features/*.md") if "template" not in f.lower() and not f.endswith("example-feature.md")]
 if not feature_files:
     print("[plan:notice] No custom specifications found in .autodev/features/.")
     print("[plan:notice] The Agent must decompose PRODUCT_BRIEF.md into feature files.")
